@@ -33,4 +33,15 @@ namespace DMGen
             }
         }
     }
+    
+    // Represents edit state of a domain model object.
+    public enum ObjectState
+    {
+    	New,
+    	Unchanged,
+    	Modified,
+    	Deleted,
+    	DeletedNew
+    }
+    
 }

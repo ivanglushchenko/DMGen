@@ -31,15 +31,29 @@ foreach (EntityType entity in ItemCollection.GetItems<EntityType>().OrderBy(e =>
 {
 <#
     region.Begin("Primitive Properties");
+#>
 
+    /// <summary>
+    /// Gets/sets the state of this object.
+    /// </summary>
+	public ObjectState State
+	{
+		get { return _state; }
+		private set
+		{
+			if (_state != value)
+			{
+				_state = value;
+				OnPropertyChanged("State");
+			}
+		}
+	}
+	private ObjectState _state;
+<#
     foreach (EdmProperty edmProperty in entity.Properties.Where(p => p.TypeUsage.EdmType is PrimitiveType && p.DeclaringType == entity))
     {
         bool isForeignKey = entity.NavigationProperties.Any(np=>np.GetDependentProperties().Contains(edmProperty));
         bool isDefaultValueDefinedInModel = (edmProperty.DefaultValue != null);
-        bool generateAutomaticProperty = false;
-
-
-
 #>
 
     /// <summary>
@@ -144,7 +158,6 @@ foreach (EntityType entity in ItemCollection.GetItems<EntityType>().OrderBy(e =>
         }
         else
         {
-            generateAutomaticProperty = true;
 #>
         <#=code.SpaceAfter(Accessibility.ForGetter(edmProperty))#>get { return <#=code.FieldName(edmProperty)#>; }
         <#=code.SpaceAfter(Accessibility.ForSetter(edmProperty))#>set
@@ -643,6 +656,57 @@ foreach (EntityType entity in ItemCollection.GetItems<EntityType>().OrderBy(e =>
 
     region.End();
 #>
+	#region Methods
+
+    /// <summary>
+    /// Accepts changes (if there are any) and sets the state of all objects to Unchanged.
+    /// </summary>
+	public void AcceptChanges()
+	{
+		AcceptChanges(new HashSet<object>());
+	}
+
+    /// <summary>
+    /// Accepts changes (if there are any) and sets the state of all objects to Unchanged.
+    /// </summary>
+	internal void AcceptChanges(HashSet<object> visitedOjects)
+	{
+		if (visitedOjects.Contains(this)) return;
+		visitedOjects.Add(this);
+		State = ObjectState.Unchanged;
+<#
+    foreach (NavigationProperty navProperty in entity.NavigationProperties.Where(np => np.DeclaringType == entity))
+    {
+        NavigationProperty inverse = ef.Inverse(navProperty);
+        if (inverse != null &&  !IsReadWriteAccessibleProperty(inverse))
+        {
+            inverse = null;
+        }
+        if (navProperty.ToEndMember.RelationshipMultiplicity == RelationshipMultiplicity.Many)
+        {
+#>
+		if (<#=code.FieldName(navProperty)#> != null)
+		{
+			foreach (var item in <#=code.FieldName(navProperty)#>)
+				item.AcceptChanges(visitedOjects);
+		}
+<#
+		}
+		else
+		{
+#>
+		if (<#=code.FieldName(navProperty)#> != null)
+		{
+			<#=code.FieldName(navProperty)#>.AcceptChanges(visitedOjects);
+		}
+<#
+		}
+	}
+#>
+	}
+
+	#endregion Methods
+
 	#region INotifyPropertyChanged Members
 
 	[NonSerialized]
@@ -820,6 +884,17 @@ public class FixupCollection<T> : ObservableCollection<T>
         }
     }
 }
+
+// Represents edit state of a domain model object.
+public enum ObjectState
+{
+	New,
+	Unchanged,
+	Modified,
+	Deleted,
+	DeletedNew
+}
+
 <#+
 }
 

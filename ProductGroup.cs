@@ -20,6 +20,23 @@ namespace DMGen
         #region Primitive Properties
     
         /// <summary>
+        /// Gets/sets the state of this object.
+        /// </summary>
+    	public ObjectState State
+    	{
+    		get { return _state; }
+    		private set
+    		{
+    			if (_state != value)
+    			{
+    				_state = value;
+    				OnPropertyChanged("State");
+    			}
+    		}
+    	}
+    	private ObjectState _state;
+    
+        /// <summary>
         /// Gets/sets Id.
         /// </summary>
         public virtual int Id
@@ -215,6 +232,42 @@ namespace DMGen
 
         #endregion
 
+    	#region Methods
+    
+        /// <summary>
+        /// Accepts changes (if there are any) and sets the state of all objects to Unchanged.
+        /// </summary>
+    	public void AcceptChanges()
+    	{
+    		AcceptChanges(new HashSet<object>());
+    	}
+    
+        /// <summary>
+        /// Accepts changes (if there are any) and sets the state of all objects to Unchanged.
+        /// </summary>
+    	internal void AcceptChanges(HashSet<object> visitedOjects)
+    	{
+    		if (visitedOjects.Contains(this)) return;
+    		visitedOjects.Add(this);
+    		State = ObjectState.Unchanged;
+    		if (_products != null)
+    		{
+    			foreach (var item in _products)
+    				item.AcceptChanges(visitedOjects);
+    		}
+    		if (_children != null)
+    		{
+    			foreach (var item in _children)
+    				item.AcceptChanges(visitedOjects);
+    		}
+    		if (_parentGroup != null)
+    		{
+    			_parentGroup.AcceptChanges(visitedOjects);
+    		}
+    	}
+    
+    	#endregion Methods
+    
     	#region INotifyPropertyChanged Members
     
     	[NonSerialized]
