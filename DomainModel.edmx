@@ -50,6 +50,7 @@
           <Property Type="Int32" Name="Id" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
           <NavigationProperty Name="Customer" Relationship="DomainModel.CustomerOrder" FromRole="Order" ToRole="Customer" />
           <NavigationProperty Name="Products" Relationship="DomainModel.OrderProduct" FromRole="Order" ToRole="Product" />
+          <Property Type="Int32" Name="Quantity" Nullable="false" />
         </EntityType>
         <EntityType Name="Product">
           <Key>

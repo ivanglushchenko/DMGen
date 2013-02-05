@@ -50,6 +50,7 @@ namespace DMGen
     				_id = value;
     				OnPropertyChanged("Id");
     				OnIdChanged();
+    				MarkAsModified();
     			}
     		}
         }
@@ -239,30 +240,58 @@ namespace DMGen
         /// </summary>
     	public void AcceptChanges()
     	{
-    		AcceptChanges(new HashSet<object>());
+    		ChangeState(ObjectState.Unchanged, TraverseDirection.Down, new HashSet<object>());
     	}
     
         /// <summary>
-        /// Accepts changes (if there are any) and sets the state of all objects to Unchanged.
+        /// Marks this and associated objects as modified.
         /// </summary>
-    	internal void AcceptChanges(HashSet<object> visitedOjects)
+    	public void MarkAsModified()
     	{
+    		ChangeState(ObjectState.Modified, TraverseDirection.Up, new HashSet<object>(new object[] { this }));
+    	}
+    
+        /// <summary>
+        /// Changes the state of all objects in the object graph.
+        /// </summary>
+    	internal void ChangeState(ObjectState desiredState, TraverseDirection direction, HashSet<object> visitedOjects)
+    	{
+    		switch (desiredState)
+    		{
+    			case ObjectState.Modified:
+    				if (State == ObjectState.Unchanged)
+    					State = ObjectState.Modified;
+    				break;
+    			case ObjectState.Deleted:
+    				if (State == ObjectState.New)
+    					State = ObjectState.DeletedNew;
+    				else
+    					State = ObjectState.Deleted;
+    				break;
+    			default:
+    				State = desiredState;
+    				break;
+    		}
     		if (visitedOjects.Contains(this)) return;
     		visitedOjects.Add(this);
-    		State = ObjectState.Unchanged;
-    		if (_products != null)
+    
+    		if ((direction == TraverseDirection.Down || direction == TraverseDirection.UpDown) && _products != null)
     		{
     			foreach (var item in _products)
-    				item.AcceptChanges(visitedOjects);
+    			{
+    				item.ChangeState(desiredState, direction, visitedOjects);
+    			}
     		}
-    		if (_children != null)
+    		if ((direction == TraverseDirection.Down || direction == TraverseDirection.UpDown) && _children != null)
     		{
     			foreach (var item in _children)
-    				item.AcceptChanges(visitedOjects);
+    			{
+    				item.ChangeState(desiredState, direction, visitedOjects);
+    			}
     		}
-    		if (_parentGroup != null)
+    		if ((direction == TraverseDirection.Up || direction == TraverseDirection.UpDown) && _parentGroup != null)
     		{
-    			_parentGroup.AcceptChanges(visitedOjects);
+    			_parentGroup.ChangeState(desiredState, direction, visitedOjects);
     		}
     	}
     

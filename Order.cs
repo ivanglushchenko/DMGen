@@ -50,12 +50,35 @@ namespace DMGen
     				_id = value;
     				OnPropertyChanged("Id");
     				OnIdChanged();
+    				MarkAsModified();
     			}
     		}
         }
     	private int _id;
     	partial void OnIdChanging(int oldValue, int newValue);
     	partial void OnIdChanged();
+    
+        /// <summary>
+        /// Gets/sets Quantity.
+        /// </summary>
+        public virtual int Quantity
+        {
+            get { return _quantity; }
+            set
+    		{
+    			if (value != _quantity)
+    			{
+    				OnQuantityChanging(_quantity, value);
+    				_quantity = value;
+    				OnPropertyChanged("Quantity");
+    				OnQuantityChanged();
+    				MarkAsModified();
+    			}
+    		}
+        }
+    	private int _quantity;
+    	partial void OnQuantityChanging(int oldValue, int newValue);
+    	partial void OnQuantityChanged();
 
         #endregion
 
@@ -162,25 +185,44 @@ namespace DMGen
         /// </summary>
     	public void AcceptChanges()
     	{
-    		AcceptChanges(new HashSet<object>());
+    		ChangeState(ObjectState.Unchanged, TraverseDirection.Down, new HashSet<object>());
     	}
     
         /// <summary>
-        /// Accepts changes (if there are any) and sets the state of all objects to Unchanged.
+        /// Marks this and associated objects as modified.
         /// </summary>
-    	internal void AcceptChanges(HashSet<object> visitedOjects)
+    	public void MarkAsModified()
     	{
+    		ChangeState(ObjectState.Modified, TraverseDirection.Up, new HashSet<object>(new object[] { this }));
+    	}
+    
+        /// <summary>
+        /// Changes the state of all objects in the object graph.
+        /// </summary>
+    	internal void ChangeState(ObjectState desiredState, TraverseDirection direction, HashSet<object> visitedOjects)
+    	{
+    		switch (desiredState)
+    		{
+    			case ObjectState.Modified:
+    				if (State == ObjectState.Unchanged)
+    					State = ObjectState.Modified;
+    				break;
+    			case ObjectState.Deleted:
+    				if (State == ObjectState.New)
+    					State = ObjectState.DeletedNew;
+    				else
+    					State = ObjectState.Deleted;
+    				break;
+    			default:
+    				State = desiredState;
+    				break;
+    		}
     		if (visitedOjects.Contains(this)) return;
     		visitedOjects.Add(this);
-    		State = ObjectState.Unchanged;
-    		if (_customer != null)
+    
+    		if ((direction == TraverseDirection.Up || direction == TraverseDirection.UpDown) && _customer != null)
     		{
-    			_customer.AcceptChanges(visitedOjects);
-    		}
-    		if (_products != null)
-    		{
-    			foreach (var item in _products)
-    				item.AcceptChanges(visitedOjects);
+    			_customer.ChangeState(desiredState, direction, visitedOjects);
     		}
     	}
     

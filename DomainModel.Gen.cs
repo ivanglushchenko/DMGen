@@ -44,4 +44,10 @@ namespace DMGen
     	DeletedNew
     }
     
+    public enum TraverseDirection
+    {
+    	Up,
+    	Down,
+    	UpDown
+    }
 }

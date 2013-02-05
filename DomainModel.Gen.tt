@@ -168,6 +168,7 @@ foreach (EntityType entity in ItemCollection.GetItems<EntityType>().OrderBy(e =>
 				<#=code.FieldName(edmProperty)#> = value;
 				OnPropertyChanged("<#=code.Escape(edmProperty)#>");
 				On<#=code.Escape(edmProperty)#>Changed();
+				MarkAsModified();
 			}
 		}
 <#
@@ -201,6 +202,7 @@ foreach (EntityType entity in ItemCollection.GetItems<EntityType>().OrderBy(e =>
 				<#=code.FieldName(edmProperty)#> = value;
 				OnPropertyChanged("<#=code.Escape(edmProperty)#>");
 				On<#=code.Escape(edmProperty)#>Changed();
+				MarkAsModified();
 			}
 		}
     }
@@ -663,41 +665,62 @@ foreach (EntityType entity in ItemCollection.GetItems<EntityType>().OrderBy(e =>
     /// </summary>
 	public void AcceptChanges()
 	{
-		AcceptChanges(new HashSet<object>());
+		ChangeState(ObjectState.Unchanged, TraverseDirection.Down, new HashSet<object>());
 	}
 
     /// <summary>
-    /// Accepts changes (if there are any) and sets the state of all objects to Unchanged.
+    /// Marks this and associated objects as modified.
     /// </summary>
-	internal void AcceptChanges(HashSet<object> visitedOjects)
+	public void MarkAsModified()
 	{
+		ChangeState(ObjectState.Modified, TraverseDirection.Up, new HashSet<object>(new object[] { this }));
+	}
+
+    /// <summary>
+    /// Changes the state of all objects in the object graph.
+    /// </summary>
+	internal void ChangeState(ObjectState desiredState, TraverseDirection direction, HashSet<object> visitedOjects)
+	{
+		switch (desiredState)
+		{
+			case ObjectState.Modified:
+				if (State == ObjectState.Unchanged)
+					State = ObjectState.Modified;
+				break;
+			case ObjectState.Deleted:
+				if (State == ObjectState.New)
+					State = ObjectState.DeletedNew;
+				else
+					State = ObjectState.Deleted;
+				break;
+			default:
+				State = desiredState;
+				break;
+		}
 		if (visitedOjects.Contains(this)) return;
 		visitedOjects.Add(this);
-		State = ObjectState.Unchanged;
+
 <#
     foreach (NavigationProperty navProperty in entity.NavigationProperties.Where(np => np.DeclaringType == entity))
     {
-        NavigationProperty inverse = ef.Inverse(navProperty);
-        if (inverse != null &&  !IsReadWriteAccessibleProperty(inverse))
-        {
-            inverse = null;
-        }
-        if (navProperty.ToEndMember.RelationshipMultiplicity == RelationshipMultiplicity.Many)
+        if (navProperty.FromEndMember.RelationshipMultiplicity == RelationshipMultiplicity.One && navProperty.ToEndMember.RelationshipMultiplicity == RelationshipMultiplicity.Many)
         {
 #>
-		if (<#=code.FieldName(navProperty)#> != null)
+		if ((direction == TraverseDirection.Down || direction == TraverseDirection.UpDown) && <#=code.FieldName(navProperty)#> != null)
 		{
 			foreach (var item in <#=code.FieldName(navProperty)#>)
-				item.AcceptChanges(visitedOjects);
+			{
+				item.ChangeState(desiredState, direction, visitedOjects);
+			}
 		}
 <#
 		}
-		else
+		else if (navProperty.FromEndMember.RelationshipMultiplicity == RelationshipMultiplicity.Many && navProperty.ToEndMember.RelationshipMultiplicity == RelationshipMultiplicity.One)
 		{
 #>
-		if (<#=code.FieldName(navProperty)#> != null)
+		if ((direction == TraverseDirection.Up || direction == TraverseDirection.UpDown) && <#=code.FieldName(navProperty)#> != null)
 		{
-			<#=code.FieldName(navProperty)#>.AcceptChanges(visitedOjects);
+			<#=code.FieldName(navProperty)#>.ChangeState(desiredState, direction, visitedOjects);
 		}
 <#
 		}
@@ -895,6 +918,12 @@ public enum ObjectState
 	DeletedNew
 }
 
+public enum TraverseDirection
+{
+	Up,
+	Down,
+	UpDown
+}
 <#+
 }
 
