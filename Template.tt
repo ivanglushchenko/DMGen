@@ -1,0 +1,41 @@
+﻿<#@ template debug="false" hostspecific="true" language="C#" #>
+<#@ output extension=".log" #>
+<#@ assembly name="System" #>
+<#@ assembly name="System.Core" #>
+<#@ assembly name="System.Xml" #>
+<#@ import namespace="System.IO" #>
+<#@ assembly name="Microsoft.TeamFoundation" #>
+<#@ assembly name="Microsoft.TeamFoundation.Client" #>
+<#@ assembly name="Microsoft.TeamFoundation.Common" #>
+<#@ assembly name="Microsoft.TeamFoundation.Common.Library" #>
+<#@ assembly name="Microsoft.TeamFoundation.VersionControl.Client" #>
+<#@ assembly name="$(TargetDir)\Shared.Foundation.dll" #>
+<#@ assembly name="$(TargetDir)\Shared.Data.dll" #>
+<#@ import namespace="System.Linq" #>
+<#@ import namespace="System.Reflection" #>
+<#@ import namespace="System.Xml.Serialization" #>
+<#@ import namespace="Shared.Data.DomainModel" #>
+<#@ import namespace="Shared.Foundation.BaseTypes" #>
+<#@ import namespace="Shared.Foundation.Enumerations" #>
+<#@ import namespace="System.Collections.Generic" #>
+<#@ import namespace="Microsoft.TeamFoundation.Client" #>
+<#@ import namespace="Microsoft.TeamFoundation.Common" #>
+<#@ import namespace="Microsoft.TeamFoundation.Framework.Client" #>
+<#@ import namespace="Microsoft.TeamFoundation.Framework.Common" #>
+<#@ import namespace="Microsoft.TeamFoundation.VersionControl.Client" #>
+<#@ include file="TemplateForDM.tt" #>
+<#
+SaveOutput(GetDomainModelClassNamePath(className), () => GenerateDomainModelClass(className));
+
+#>
+<#+
+void SaveOutput(string outputFileName, Action generator)
+{
+    generator();
+    string templateDirectory = Path.GetDirectoryName(Host.TemplateFile);
+	string outputFilePath = "FULL_PATH_TO_TRUNK" + outputFileName;
+    File.WriteAllText(outputFilePath, this.GenerationEnvironment.ToString());
+
+    this.GenerationEnvironment.Remove(0, this.GenerationEnvironment.Length);
+}
+#>

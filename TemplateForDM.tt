@@ -1,0 +1,30 @@
+﻿<#@ output extension=".log" #>
+<#@ assembly name="System" #>
+<#@ assembly name="System.Core" #>
+<#@ assembly name="$(TargetDir)\Shared.Foundation.dll" #>
+<#@ assembly name="$(TargetDir)\Shared.Data.dll" #>
+<#@ import namespace="System.Linq" #>
+<#@ import namespace="System.IO" #>
+<#@ import namespace="System.Reflection" #>
+<#@ import namespace="System.Collections.Generic" #>
+<#@ import namespace="Shared.Data.DomainModel" #>
+<#+
+void GenerateDomainModelClass(string className)
+{
+#>
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Collections.ObjectModel;
+
+
+namespace Shared.Data.DomainModel
+{
+	public partial class <#=className #>
+	{
+	}
+}
+<#+
+}
+#>
